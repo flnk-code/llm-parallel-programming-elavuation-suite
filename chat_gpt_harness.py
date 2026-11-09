@@ -29,6 +29,7 @@ def print_stats(pass_k, passed, model, algorithm, runs):
     print("passed: " + str(passed))
     print("pass@k: " + str(pass_k))
 
+#TODO look for ways to tidy up duplicate code between run_merge and run_scan
 
 class ChatGPTHarness:
     client = None
@@ -39,6 +40,7 @@ class ChatGPTHarness:
 
 
     def run_merge(self, model=None, runs=None, template_dir="./template"):
+        base_dir = os.getcwd()
         if model is None:
             model = "gpt-4o"
         if runs is None:
@@ -48,8 +50,8 @@ class ChatGPTHarness:
         for i in range(runs):
             run = str(i+1)
             print("starting run " + run)
-            dir_name = "merge-" + current_time.strftime('%d.%m.%Y.%h.%s') + "-run:"+run
-            os.mkdir(dir_name)
+            dir_name = "runs/merge/"+ model +"/merge-" + current_time.strftime('%d.%m.%Y.%h.%s') + "-run:"+run
+            os.makedirs(dir_name)
             os.system("cp " + template_dir + "/* " + dir_name)
             os.chdir(dir_name)
             with open("merge_prompt", 'r') as prompt_file:
@@ -62,11 +64,11 @@ class ChatGPTHarness:
                 )
             except openai.BadRequestError:
                 print("run "+ run + " could not retrieve model answer (Bad Request)")
-                os.chdir("..")
+                os.chdir(base_dir)
                 continue
             except openai.AuthenticationError:
                 print("run " + run + " could not retrieve model answer (Authentication failed)")
-                os.chdir("..")
+                os.chdir(base_dir)
                 continue
             with open("merge.c", 'w') as solution:
                 solution.write(merge_response.output_text)
@@ -103,7 +105,8 @@ class ChatGPTHarness:
                     result_file.write("No executable found")
 
             finally:
-                os.chdir("..")
+                os.system("make remove-template")
+                os.chdir(base_dir)
         k = runs/2
         print_stats(pass_at_k(runs, passed, max(k, 1)), passed, model, "merge", runs)
 
@@ -119,7 +122,7 @@ class ChatGPTHarness:
         for i in range(runs):
             run = str(i+1)
             print("starting run " + run)
-            dir_name = "runs/" + model + "/scan-" + current_time.strftime('%d.%m.%Y.%h.%s') + "-run:" + run
+            dir_name = "runs/scan/" + model + "/scan-" + current_time.strftime('%d.%m.%Y.%h.%s') + "-run:" + run
             
             os.makedirs(dir_name)
             os.system("cp " + template_dir + "/* " + dir_name)

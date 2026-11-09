@@ -22,7 +22,8 @@ def generate_and_test():
     match algorithm:
         case "s":
             harness.run_scan(model=model, runs=runs)   
-   
+        case "m":
+            harness.run_merge(model=model, runs=runs)
 
 
 if __name__ == "__main__":

@@ -38,7 +38,7 @@ class GeminiHarness:
     def run_merge(self, model=None, runs=None, template_dir="./template"):
         base_dir = os.getcwd()
         if model is None:
-            model = "gemini-3-flash-preview"
+            model = "gemini-3.8-flash"
         if runs is None:
             runs = 1
         current_time = datetime.now()
@@ -46,29 +46,31 @@ class GeminiHarness:
         for i in range(runs):
             run = str(i+1)
             print("starting run " + run)
-            dir_name = "merge-" + current_time.strftime('%d.%m.%Y.%h.%s') + "-run:"+run
-            os.mkdir(dir_name)
+            dir_name = "runs/merge/" + model + "/merge-" + current_time.strftime('%d.%m.%Y.%h.%s') + "-run:" + run
+            os.makedirs(dir_name)
             os.system("cp " + template_dir + "/* " + dir_name)
             os.chdir(dir_name)
             with open("merge_prompt", 'r') as prompt_file:
                 prompt = prompt_file.read()
+            print("prompting AI...")
             try:
                 merge_response = self.client.models.generate_content(
                     model=model,
                     config=types.GenerateContentConfig(system_instruction="You are given C code that you have to parallelize using OpenMP. Your response should consist only of your solution. The name and signature of the function must not change. You must include all the imports in the given code. Do not include any markdown symbols in your response."),
                     contents=prompt
                 )
-            finally:
-                with open("merge.c", 'w') as solution:
-                    solution.write(merge_response.output_text)
-            # except openai.BadRequestError:
-            #     print("run "+ run + " could not retrieve model answer (Bad Request)")
-            #     os.chdir("..")
-            #     continue
-            # except openai.AuthenticationError:
-            #     print("run " + run + " could not retrieve model answer (Authentication failed)")
-            #     os.chdir("..")
-            #     continue
+            except errors.APIError as e:
+                print(e.code) # 404
+                print(e.message)
+                os.chdir(base_dir)
+                continue
+            except Exception as e:
+                print(e)
+                os.chdir(base_dir)
+                continue
+            
+            with open("merge.c", 'w') as solution:
+                solution.write(merge_response.output_text)
 
 
             print("compiling solution...")
@@ -119,7 +121,7 @@ class GeminiHarness:
         for i in range(runs):
             run = str(i+1)
             print("starting run " + run)
-            dir_name = "runs/"+model+"/scan-"+current_time.strftime('%d.%m.%Y.%h.%s') + "-run:"+run
+            dir_name = "runs/scan/"+model+"/scan-"+current_time.strftime('%d.%m.%Y.%h.%s') + "-run:"+run
             os.makedirs(dir_name)
             os.system("cp " + template_dir + "/* " + dir_name)
             os.chdir(dir_name)
